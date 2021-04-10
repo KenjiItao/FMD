@@ -1,0 +1,348 @@
+---
+title: "FMD modelling"
+author: "F.Omata"
+date: "2017/10/06"
+output:
+  pdf_document: 
+    latex_engine: lualatex 
+documentclass: ltjsarticle 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Plots for FMD Modelling
+
+- Analysis and plot for FMD
+- Please run this file with the needed libraries installed and a script "multiplot.R"
+- To install package run: `install.packages("package_name")`
+- This script will make a directory called "dir" to save all plots
+
+```{r, warning=FALSE, message=FALSE}
+rm(list=ls())
+dir.create(file.path("./figs"), showWarnings = FALSE)
+
+require(deSolve)
+require(ggplot2)
+require(dplyr)
+require(tidyverse)
+
+source("./multiplot.R")
+```
+
+## Initial parameters
+
+from: draft1 https://docs.google.com/document/d/13TNHsvMWXGucRYxdEXa58mfz6ApHoEzzgF7PTyf6Zzg/edit
+
+latent period cattle: 3.59  
+subclinical period cattle: 2.04  
+clinical period cattle: 2.35  
+
+latent period swine: 3.07  
+subclinical period swine: 2.27  
+clinical period swine: 3.42  
+
+R_0: 38.4 *Need verification for parameter*  
+cattle to cattle: cattle to swine: swine to cattle: swine to swine = 1:0.77:2.45:3.01
+
+from: http://www.maff.go.jp/j/wpaper/w_maff/h22/pdf/z_1_1_5.pdf  
+平成22年度 食料・農業・農村白書（平成23年5月31日公表）  
+発生農場は 292 農場、発生自治体数は 11 市町、家畜への被害は牛 69,454 頭、
+豚 227,949 頭、その他（山羊、羊、イノシシ、水牛等）405 頭
+
+```{r}
+# For cattle
+latent_period_cow <- 3.59
+subclinical_period_cow <- 2.04
+clinical_period_cow <- 2.35 * 20  # most interersting parameter
+
+# For swine
+latent_period_swine <- 3.07
+subclinical_period_swine <- 2.27
+clinical_period_swine <- 3.42 * 20  # most interersting parameter
+
+#depopulation_capacity <- 100
+#depopulation_ratio_swine <- 0.4
+#vaccination_efficiency <- 0.87
+
+R_0 <- 38.4
+beta <- 4.5/(3*2800*5*3.7)  #2.895753e-05
+
+#A <- matrix(0,2,2)
+#A[1,] <- c(1,2.45)
+#A[2,] <- c(0.77,3.01)
+#eigen(A)
+params_func <- function(beta.=beta){
+    params <- list(
+    beta_cowtocow = beta.,
+    beta_cowtoswine = 0.77*beta.,
+    beta_swinetocow = 2.45*beta.,
+    beta_swinetoswine = 3.01*beta.,
+    lambda_cow = 1/latent_period_cow,
+    lambda_swine = 1/latent_period_swine,
+    gamma_cow = 1/subclinical_period_cow,
+    gamma_swine = 1/subclinical_period_swine,
+    #delta_cow = (1-depopulation_ratio_swine)*depopulation_capacity,
+    #delta_swine = depopulation_ratio_swine*depopulation_capacity,
+    recover_cow = 1/clinical_period_cow,
+    recover_swine = 1/clinical_period_swine,
+    day_depopulation_start = 45)  ## need confirmation
+    return(params)
+    }
+```
+
+### Initial conditions  
+- From Itao san's email from 2017/10/03  
+estimated onset: 04/17  
+depopulation completion date: 04/21  
+- onset-day:=4+subclinical period  -> Depopulation starts 4 days after the emergence of I1. 
+- Initial values: I1_cow=1, S_cow=8,000, S_swine=500
+- Run with different $\beta$, finding the one with similar outcome 
+
+```{r}
+initial <- c(S_c = 8000, E_c = 0, I1_c = 1, I2_c = 0, S_s = 500, E_s = 0, I1_s = 0, I2_s = 0)
+#initial <- c(S_c = 3*2619, E_c = 0, I1_c = 0, I2_c =3, S_s = 3*180, E_s=0, I1_s=0, I2_s=0)
+```
+
+### equation of model
+
+```{r}
+diff <- function(time, state, params){
+    with(as.list(c(state, params)), {
+    ## depopulation starts after 4 days  when initial I1 ha been found
+    if (time > day_depopulation_start + 4)
+        {a <- 1}
+    else 
+        {a <- 0}
+    delta_swine <- min(I2_s,16)*a
+    delta_cow <- min(I2_c,16-I2_s)*a
+    S_c_new <- -beta_cowtocow*(I1_c+I2_c)*S_c - beta_swinetocow*(I1_s+I2_s)*S_c
+    E_c_new <- beta_cowtocow*(I1_c+I2_c)*S_c + beta_swinetocow*(I1_s+I2_s)*S_c-lambda_cow*E_c
+    I1_c_new <- lambda_cow*E_c -gamma_cow*I1_c
+    I2_c_new <- gamma_cow*I1_c - min(delta_cow,I2_c)*a -recover_cow*I2_c
+    S_s_new <- -beta_cowtoswine*(I1_c+I2_c)*S_s-beta_swinetoswine*(I1_s+I2_s)*S_s
+    E_s_new <- beta_cowtoswine*(I1_c+I2_c)*S_s+beta_swinetoswine*(I1_s+I2_s)*S_s-lambda_swine*E_s
+    I1_s_new <- lambda_swine*E_s -gamma_swine*I1_s
+    I2_s_new <- gamma_swine*I1_s - min(delta_swine,I2_s)*a -recover_swine*I2_s
+    return(list(c(S_c = S_c_new, E_c = E_c_new, I1_c = I1_c_new, I2_c = I2_c_new, 
+                  S_s = S_s_new, E_s = E_s_new, I1_s = I1_s_new, I2_s = I2_s_new)))})
+    }
+```
+
+## Analysis 1: Estimation of $\beta$
+- How does the difference of $\beta$ contribute to final size?
+
+from: http://lin.alic.go.jp/alic/month/domefore/2011/aug/spe-02.htm  
+宮崎県における口蹄疫からの復興への取り組み  
+"4月20日の発生から130日を要した口蹄疫の防疫措置は完了し、"
+
+- Thus max_day=130 may be appropriate.
+- max_day=150 from Itao-san's advice
+
+```{r}
+final_size_est <- function(params.=params_tmp, 
+                           initial.=initial, 
+                           max_day=150, 
+                           func.=diff) {
+    days <- 0:max_day
+    result <- ode(y=initial., times=days, func=func., parms=params.)
+    R_c <- initial["S_c"] - result[, "S_c"] - result[, "E_c"] - result[, "I1_c"] - result[, "I2_c"]
+    R_s <- initial["S_s"] - result[, "S_s"] - result[, "E_s"] - result[, "I1_s"] - result[, "I2_s"]
+    result <- as.data.frame(cbind(result, R_c, R_s))
+    
+    final_size <- result$R_c[max_day] + result$R_s[max_day] 
+    return(final_size)
+}
+```
+
+### power of $\beta$ 
+$\beta * 10^{-3}$ - $\beta * 10^3$   
+
+```{r}
+pows <- seq(-3, 3, 0.02)
+final_size_list <- c()
+for (p in pows){
+    params_tmp <- params_func(beta*10^p)
+    final_size_list <- append(final_size_list, final_size_est())
+}
+    
+df_final_size <- cbind.data.frame(pows, final_size_list)
+
+plt <-  ggplot(aes(x=pows, y=final_size_list), data = df_final_size)
+plt <- plt + geom_line(size = 1.5)
+plt <-  plt + theme_bw()
+plt <- plt + theme(axis.text=element_text(size=18), 
+               axis.title=element_text(size=18,face="bold"), 
+               text = element_text(size=18), 
+               legend.text=element_text(size=18))
+plt <- plt + xlab("Power of beta: log10") + ylab("Final size")
+show(plt)
+
+ggsave(filename="./figs/fig1-1_final_size_by_power_beta.png", plot=plt, 
+       dpi=100, width=10.0, height = 8.0)
+```
+
+- $\beta * 10^p$  
+- $\beta*10^{-0.20}$: `r beta * 10^(-0.20)` -> `r dplyr::filter(df_final_size, pows == "-0.2")$final_size_list`
+- $\beta*10^{-0.18}$: `r beta * 10^(-0.18)` -> `r dplyr::filter(df_final_size, pows == "-0.18")$final_size_list`
+
+###  Change of final size when $\beta$ is proportionaly changed
+
+
+```{r}
+beta_low <- beta * 10^(-0.20)
+beta_high <- beta * 10^(-0.18)
+betas <- seq(beta_low, beta_high, length.out=1000)
+final_size_list <- c()
+
+for (b in betas){
+    params_tmp <- params_func(b)
+    final_size_list <- append(final_size_list, final_size_est())
+}
+    
+df_final_size <- cbind.data.frame(betas, final_size_list)
+
+plt <-  ggplot(aes(x=betas, y=final_size_list), data = df_final_size)
+plt <- plt + geom_line(size = 1.5)
+## final size of actual outbreak: needs confirmation
+plt <-  plt + geom_segment(x=0, xend=40, y=2000, yend=16, size=1.0)  
+plt <-  plt + theme_bw()
+plt <- plt + theme(axis.text=element_text(size=18), 
+               axis.title=element_text(size=18,face="bold"), 
+               text = element_text(size=18), 
+               legend.text=element_text(size=18))
+plt <- plt + xlab("beta") + ylab("Final size")
+show(plt)
+
+ggsave(filename="./figs/fig1-2_linear_beta_vs_finalsize.png", plot=plt, 
+       dpi=100, width=10.0, height = 8.0)
+```
+
+- Result
+
+```{r}
+print(df_final_size[310:320, ])
+
+## from output
+beta <- 1.854162e-05
+```
+
+## Analysis 2: Final size simulation
+- Initiation day of depopulationを連続的に変化させて、final sizeの振る舞いを調べた。
+
+from: http://lin.alic.go.jp/alic/month/domefore/2011/aug/spe-02.htm  
+宮崎県における口蹄疫からの復興への取り組み  
+"4月20日の発生から130日を要した口蹄疫の防疫措置は完了し、"
+
+- max_day=300 was used to better show the presence of deadline
+
+### Depopulation from 0-60 days
+
+```{r}
+params_tmp <- params_func(beta.=beta)
+depop_date <- 0:60
+final_size_list <- c()
+for (d in depop_date){
+    params_tmp$day_depopulation_start <- d
+    final_size_list <- append(final_size_list, final_size_est(max_day=300))
+}
+    
+df_final_size <- cbind.data.frame(depop_date, final_size_list)
+
+plt <-  ggplot(aes(x=depop_date, y=final_size_list), data = df_final_size)
+plt <- plt + geom_line(size = 1.5)
+plt <-  plt + theme_bw()
+plt <- plt + theme(axis.text=element_text(size=18), 
+               axis.title=element_text(size=18,face="bold"), 
+               text = element_text(size=18), 
+               legend.text=element_text(size=18))
+plt <- plt + xlab("Initiation day of depopulation") + ylab("Final size")
+plt 
+ggsave(filename="./figs/fig2_different_initiation_date.png", plot=plt, 
+       dpi=100, width=10.0, height = 8.0)
+```
+
+## Analysis 3: Sensitivity analysis of beta
+- Final size simulation was done under different beta values.  
+- $0.6-1.4 *\beta$ was used for simulation.  
+- max_day=300 was used to better show the presence of deadline
+
+
+```{r}
+## This process may take some time
+mults <- seq(0.6, 1.4, 0.05)
+depop_date <- 0:100
+df_depop_mult <- data.frame()
+
+for (m in mults){
+    params_tmp <- params_func(m*beta)
+    final_size_list <- c()
+        for (d in depop_date){
+            params_tmp$day_depopulation_start <- d
+            #max_day=130 yields strange results; need to check
+            final_size_list <- append(final_size_list, final_size_est(max_day=300))
+        }
+    mult <- rep(m, length(final_size_list))
+    df_depop <- cbind.data.frame(depop_date, final_size_list, mult)
+    df_depop_mult <- rbind(df_depop_mult, df_depop)
+    }
+
+```
+
+```{r}
+plt <-  ggplot(aes(x=depop_date, y=final_size_list, group=factor(mult)), data = df_depop_mult)
+plt <- plt + geom_line(aes(colour = mult), size = 1.5)
+plt <- plt + scale_colour_gradient2(low="blue", mid="gray", high="red", midpoint=1.0)
+plt <-  plt + theme_bw()
+plt <- plt + theme(axis.text=element_text(size=18), 
+               axis.title=element_text(size=18,face="bold"), 
+               text = element_text(size=18), 
+               legend.text=element_text(size=18))
+plt <- plt + xlab("Initiation day of depopulation") + ylab("Final size")
+plt 
+
+ggsave(filename="./figs/fig3_final_size_by_beta_and_initiation_date.png", plot=plt, 
+       dpi=100, width=10.0, height = 8.0)
+```
+
+## Analysis 4: Equational interpretation of this model 
+
+- max_day=300 was used to better show the presence of deadline
+
+```{r}
+max_day <- 300
+days <- 0:max_day
+params = params_func(beta.=beta)
+
+result <- ode(y=initial, times=days, func=diff, parms=params)
+
+R_c <- initial["S_c"] - result[, "S_c"] - result[, "E_c"] - result[, "I1_c"] - result[, "I2_c"]
+R_s <- initial["S_s"] - result[, "S_s"] - result[, "E_s"] - result[, "I1_s"] - result[, "I2_s"]
+result <- as.data.frame(cbind(result, R_c, R_s))
+
+result_ed <- result %>% 
+    dplyr::mutate(FOI = params$beta_cowtocow * (I1_c+I2_c)*S_c + 
+                      params$beta_swinetocow * (I1_s+I2_s)*S_c + 
+                      params$beta_cowtoswine * (I1_c+I2_c)*S_s + 
+                      params$beta_swinetoswine * (I1_s+I2_s)*S_s)
+plt <- ggplot(aes(time, FOI), data = result_ed)
+plt <- plt + geom_line(size = 1.5)
+plt <-  plt + geom_segment(x=0, xend=80, y=16, yend=16, size=1.0)
+plt <- plt + scale_x_continuous(limits = c(0, 80))
+plt <-  plt + theme_bw()
+plt <- plt + theme(axis.text=element_text(size=18), 
+                   axis.title=element_text(size=18,face="bold"), 
+                   text = element_text(size=18), 
+                   legend.text=element_text(size=18))
+plt <- plt + xlab("Days") + ylab("Daily New Cases")
+plt
+
+ggsave(filename="./figs/fig4_equation_interpretation.png", plot=plt, 
+       dpi=100, width=10.0, height = 8.0)
+```
+
+Analysis 4: Sensitivity analysis of 牧場間の感染のパラメータ
+- Final size simulation was done under different 牧場間の感染のパラメータ values.  
+- How to implement the change parameters?
+- No need to implement.
