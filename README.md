@@ -1,17 +1,10 @@
-# Evolution of Kinship Structures
-Source Code of K. Itao and K. Kaneko "Evolution of Kinship Structures Driven by Marriage Tie and Competition" PNAS, 2020
+# Threshold Phenomena in the Foot-and-Mouth Disease Model
+Source code for Kenji Itao, Fumiya Omata, Yoshitaka Nishikawa, Tetsuro Oda, Toshiharu Sasaki, Cherri Zhang, John Solomon Maninang and Takayuki Yamaguchi "Threshold phenomena with respect to the initiation of depopulation in a simple model of foot-and-mouth disease" MBE, 2019
 
-## One-trait model
-We build a simple model of family groups, in which exchange of brides and resultant cooperation and competition are considered, by applying an agent-based model and multi-level evolution. By introducing one dimensional trait and preference, we show the emergence of the incest taboo.
+## Model
+We build a simple model of the epidemic of foot-and-mouth disease.
 
-Run [one-trait/emergy.py](one-trait/emerge.py) to get the phase diagrams on the emergence of the incest taboo.  
-Run [one-trait/plot.py](one-trait/plot.py) to get the visual images on the emergence of the incest taboo.
-
-## Two-trait model
-By introducing two dimensional trait and preference, we show the emergence of kinship structures.
-
-Run [two-trait/emergy.py](two-trait/emerge.py) to get the phase diagrams on the emergence of kinship structures.  
-Run [two-trait/plot.py](two-trait/plot.py) to get the visual images on the emergence of kinship structures.
+Run [fmd_model.R](fmd_model.R) for analysis.  
 
 ## License
 [MIT](LICENSE)
