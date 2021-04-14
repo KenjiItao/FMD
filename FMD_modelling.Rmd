@@ -32,9 +32,6 @@ source("./multiplot.R")
 ```
 
 ## Initial parameters
-
-from: draft1 https://docs.google.com/document/d/13TNHsvMWXGucRYxdEXa58mfz6ApHoEzzgF7PTyf6Zzg/edit
-
 latent period cattle: 3.59  
 subclinical period cattle: 2.04  
 clinical period cattle: 2.35  
