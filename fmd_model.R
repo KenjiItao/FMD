@@ -2,10 +2,6 @@
 #' title: "FMD modelling"
 #' author: "F.Omata"
 #' date: "2017/10/06"
-#' output:
-#'   pdf_document:
-#'     latex_engine: lualatex
-#' documentclass: ltjsarticle
 #' ---
 #'
 #'
@@ -34,8 +30,6 @@ source("./multiplot.R")
 #'
 #' ## Initial parameters
 #'
-#' from: draft1 https://docs.google.com/document/d/13TNHsvMWXGucRYxdEXa58mfz6ApHoEzzgF7PTyf6Zzg/edit
-#'
 #' latent period cattle: 3.59
 #' subclinical period cattle: 2.04
 #' clinical period cattle: 2.35
@@ -48,9 +42,9 @@ source("./multiplot.R")
 #' cattle to cattle: cattle to swine: swine to cattle: swine to swine = 1:0.77:2.45:3.01
 #'
 #' from: http://www.maff.go.jp/j/wpaper/w_maff/h22/pdf/z_1_1_5.pdf
-#' •½¬22”N“x H—¿E”_‹ÆE”_‘º”’‘i•½¬23”N5Œ31“úŒö•\j
-#' ”­¶”_ê‚Í 292 ”_êA”­¶©¡‘Ì”‚Í 11 s’¬A‰Æ’{‚Ö‚Ì”íŠQ‚Í‹ 69,454 “ªA
-#' “Ø 227,949 “ªA‚»‚Ì‘¼iR—rA—rAƒCƒmƒVƒVA…‹“™j405 “ª
+#' å¹³æˆ22å¹´åº¦ é£Ÿæ–™ãƒ»è¾²æ¥­ãƒ»è¾²æ‘ç™½æ›¸ï¼ˆå¹³æˆ23å¹´5æœˆ31æ—¥å…¬è¡¨ï¼‰
+#' ç™ºç”Ÿè¾²å ´ã¯ 292 è¾²å ´ã€ç™ºç”Ÿè‡ªæ²»ä½“æ•°ã¯ 11 å¸‚ç”ºã€å®¶ç•œã¸ã®è¢«å®³ã¯ç‰› 69,454 é ­ã€
+#' è±š 227,949 é ­ã€ãã®ä»–ï¼ˆå±±ç¾Šã€ç¾Šã€ã‚¤ãƒã‚·ã‚·ã€æ°´ç‰›ç­‰ï¼‰405 é ­
 #'
 #'
 ## For cattle
@@ -118,9 +112,9 @@ initial <- c(S_c = 11030, E_c = 0, I1_c = 0, I2_c = 0, S_s = 654, E_s = 0, I1_s 
 #'
 diff <- function(time, state, params) {
     with(as.list(c(state, params)), {
-        ## initial ‚Ì I1_c = 1 ‚È‚Ì‚ÅÅ‰‚ÌŠ´õ‚Í time = 0.
-        ## time = time_undiscovered ‚É‚È‚é‚Æ depopulation_initial_capacity ‚Å“jEŠJn
-        ## time = day_depop_start + time_undiscovered ‚É‚È‚é‚Æ depopulation_capacity ‚Å–{Ši“I‚É“jEŠJn
+        ## initial ã® I1_c = 1 ãªã®ã§æœ€åˆã®æ„ŸæŸ“ã¯ time = 0.
+        ## time = time_undiscovered ã«ãªã‚‹ã¨ depopulation_initial_capacity ã§å± æ®ºé–‹å§‹
+        ## time = day_depop_start + time_undiscovered ã«ãªã‚‹ã¨ depopulation_capacity ã§æœ¬æ ¼çš„ã«å± æ®ºé–‹å§‹
         if (exists("depopulation_data")) {
             day = floor(time)
             val <- depopulation_data[depopulation_data["days"] == day, "completion.of.depopulation"]
@@ -182,8 +176,8 @@ diff <- function(time, state, params) {
 #' - How does the difference of $\beta$ contribute to final size?
 #'
 #' from: http://lin.alic.go.jp/alic/month/domefore/2011/aug/spe-02.htm
-#' ‹{èŒ§‚É‚¨‚¯‚éŒû’û‰u‚©‚ç‚Ì•œ‹»‚Ö‚Ìæ‚è‘g‚İ
-#' "4Œ20“ú‚Ì”­¶‚©‚ç130“ú‚ğ—v‚µ‚½Œû’û‰u‚Ì–h‰u‘[’u‚ÍŠ®—¹‚µA"
+#' å®®å´çœŒã«ãŠã‘ã‚‹å£è¹„ç–«ã‹ã‚‰ã®å¾©èˆˆã¸ã®å–ã‚Šçµ„ã¿
+#' "4æœˆ20æ—¥ã®ç™ºç”Ÿã‹ã‚‰130æ—¥ã‚’è¦ã—ãŸå£è¹„ç–«ã®é˜²ç–«æªç½®ã¯å®Œäº†ã—ã€"
 #'
 #' - Thus max_day=130 may be appropriate.
 #' - max_day=150 from Itao-san's advice
@@ -375,11 +369,11 @@ run_analysis1_2 <- function() {
 #'
 #'
 #' ## Analysis 2: Final size simulation
-#' - Initiation day of depopulation‚ğ˜A‘±“I‚É•Ï‰»‚³‚¹‚ÄAfinal size‚ÌU‚é•‘‚¢‚ğ’²‚×‚½B
+#' - Initiation day of depopulationã‚’é€£ç¶šçš„ã«å¤‰åŒ–ã•ã›ã¦ã€final sizeã®æŒ¯ã‚‹èˆã„ã‚’èª¿ã¹ãŸã€‚
 #'
 #' from: http://lin.alic.go.jp/alic/month/domefore/2011/aug/spe-02.htm
-#' ‹{èŒ§‚É‚¨‚¯‚éŒû’û‰u‚©‚ç‚Ì•œ‹»‚Ö‚Ìæ‚è‘g‚İ
-#' "4Œ20“ú‚Ì”­¶‚©‚ç130“ú‚ğ—v‚µ‚½Œû’û‰u‚Ì–h‰u‘[’u‚ÍŠ®—¹‚µA"
+#' å®®å´çœŒã«ãŠã‘ã‚‹å£è¹„ç–«ã‹ã‚‰ã®å¾©èˆˆã¸ã®å–ã‚Šçµ„ã¿
+#' "4æœˆ20æ—¥ã®ç™ºç”Ÿã‹ã‚‰130æ—¥ã‚’è¦ã—ãŸå£è¹„ç–«ã®é˜²ç–«æªç½®ã¯å®Œäº†ã—ã€"
 #'
 #'
 run_analysis2 <- function(beta) {
@@ -635,8 +629,8 @@ run_analysis4_2 <- function(beta) {
 }
 #'
 #'
-#' Analysis 4: Sensitivity analysis of –qêŠÔ‚ÌŠ´õ‚Ìƒpƒ‰ƒ[ƒ^
-#' - Final size simulation was done under different –qêŠÔ‚ÌŠ´õ‚Ìƒpƒ‰ƒ[ƒ^ values.
+#' Analysis 4: Sensitivity analysis of ç‰§å ´é–“ã®æ„ŸæŸ“ã®ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿
+#' - Final size simulation was done under different ç‰§å ´é–“ã®æ„ŸæŸ“ã®ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ values.
 #' - How to implement the change parameters?
 #' - No need to implement.
 
@@ -653,7 +647,7 @@ run_analysis5 <- function(beta) {
     plot_epicurve(as.data.frame(result), "epicurve_depop_21", params[["day_depopulation_start"]])
 }
 
-## V‹KŠ´õ” (I2 ‚Ì‘•ª)
+## æ–°è¦æ„ŸæŸ“æ•° (I2 ã®å¢—åˆ†)
 run_analysis6 <- function(beta) {
     max_day <- 120
     depop_start <- 21
@@ -716,7 +710,7 @@ calc_incidence <- function(beta, depop_start, max_day, data_start, depop_data = 
 nll_estimate_beta <- function(beta) {
     print(beta)
     depop_start <- 21
-    ## ƒf[ƒ^‚Ì day ‚ªƒVƒ~ƒ…ƒŒ[ƒVƒ‡ƒ“‚Ì day ‚Ì‚¢‚Â‚É‘Î‰‚·‚é‚Ì‚©Œˆ‚ß‚é•K—v‚ª‚ ‚é
+    ## ãƒ‡ãƒ¼ã‚¿ã® day ãŒã‚·ãƒŸãƒ¥ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³ã® day ã®ã„ã¤ã«å¯¾å¿œã™ã‚‹ã®ã‹æ±ºã‚ã‚‹å¿…è¦ãŒã‚ã‚‹
     data_start <- 22
     data <- read.csv("epi_depop_curve.csv")
     data_reported <- data[, "reported"]
